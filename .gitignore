@@ -1,0 +1,12 @@
+﻿# Node.js
+node_modules/
+*.log
+.env
+
+# Logs & temp
+logs/
+uploads/
+
+# System/IDE
+.DS_Store
+.vscode/
