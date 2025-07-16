@@ -1,4 +1,4 @@
-// C:\Users\DRX_SIMON\Drx-cours2.0\trading-platform\frontend\vite.config.ts
+// vite.config.ts - Optimierte Konfiguration
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -32,9 +32,21 @@ export default defineConfig({
   },
   css: {
     devSourcemap: true,
+    postcss: './postcss.config.js', // Explizit PostCSS Config angeben
   },
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+        }
+      }
+    }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom']
   }
 })
