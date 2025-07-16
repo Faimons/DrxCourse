@@ -20,6 +20,7 @@ import AchievementsPage from './components/pages/AchievementsPage'
 import LessonPage from './components/pages/LessonPage'
 import PracticePage from './components/pages/PracticePage'
 import SettingsPage from './components/pages/SettingsPage'
+import LessonDemo from './components/pages/LessonDemo'
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
             <Route path="achievements" element={<AchievementsPage />} />
             <Route path="practice" element={<PracticePage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="lesson-demo" element={<LessonDemo />} />
           </Route>
 
           {/* Catch all route */}
