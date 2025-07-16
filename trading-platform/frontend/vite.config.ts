@@ -1,9 +1,8 @@
-// vite.config.ts - TypeScript Support
+// C:\Users\DRX_SIMON\Drx-cours2.0\trading-platform\frontend\vite.config.ts
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -11,23 +10,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  esbuild: {
-    loader: 'tsx',
-    include: /src\/.*\.[tj]sx?$/,
-    exclude: [],
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      loader: {
-        '.js': 'jsx',
-        '.ts': 'tsx',
-        '.tsx': 'tsx'
-      },
-    },
-  },
   server: {
     host: '0.0.0.0',
     port: 5173,
+    strictPort: true,
+    hmr: {
+      port: 5173,
+      host: 'localhost'
+    },
+    watch: {
+      usePolling: true,  // Wichtig für Windows!
+      interval: 100
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
@@ -36,17 +30,11 @@ export default defineConfig({
       },
     },
   },
+  css: {
+    devSourcemap: true,
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          icons: ['lucide-react'],
-        },
-      },
-    },
-  },
+  }
 })
