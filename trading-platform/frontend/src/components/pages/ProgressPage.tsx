@@ -1,4 +1,4 @@
-// C:\Users\DRX_SIMON\Drx-cours2.0\trading-platform\frontend\src\components\pages\ProgressPage.tsx
+// C:\Users\DRX_SIMON\Drx-cours2.0\trading-platform\frontend\src\components\pages\Progress.tsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -14,7 +14,7 @@ import {
   BookOpen,
   Zap,
   Trophy,
-  Fire,
+  Flame,      // ✅ KORRIGIERT: Fire → Flame
   ArrowUp,
   ArrowDown,
   Filter,
@@ -273,7 +273,7 @@ const ProgressPage = () => {
                 <p className="text-sm text-gray-400">days • Best: {progressData.overview.longestStreak}</p>
               </div>
               <div className="bg-orange-500/20 p-3 rounded-lg">
-                <Fire className="h-6 w-6 text-orange-400" />
+                <Flame className="h-6 w-6 text-orange-400" />  {/* ✅ KORRIGIERT: Fire → Flame */}
               </div>
             </div>
           </div>
@@ -360,7 +360,7 @@ const ProgressPage = () => {
             {/* Learning Streak */}
             <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center">
-                <Fire className="h-5 w-5 text-orange-400 mr-2" />
+                <Flame className="h-5 w-5 text-orange-400 mr-2" />  {/* ✅ KORRIGIERT: Fire → Flame */}
                 Learning Streak
               </h3>
               <div className="text-center mb-4">
