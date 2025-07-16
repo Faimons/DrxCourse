@@ -1,3 +1,4 @@
+// src/components/pages/Dashboard.tsx - Korrigierte Version
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -12,10 +13,27 @@ import {
   BarChart3
 } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
-import { DashboardData } from '../../types';
-import apiService from '../../services/api';
 
-const Dashboard: React.FC = () => {
+interface DashboardData {
+  overview: {
+    totalLessons: number;
+    completedLessons: number;
+    completionRate: number;
+    totalTimeSpent: number;
+    currentStreak: number;
+    longestStreak: number;
+  };
+  recentActivity: Array<{
+    lessonTitle: string;
+    completedAt: string;
+    timeSpent: number;
+    quizScore?: number;
+    quizPassed?: boolean;
+  }>;
+  achievements: any[];
+}
+
+const Dashboard = () => {
   const { user } = useUser();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,11 +44,7 @@ const Dashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     try {
-      const data = await apiService.get<DashboardData>('/dashboard/live');
-      setDashboardData(data);
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
-      // Set fallback data
+      // Fallback data for demo
       setDashboardData({
         overview: {
           totalLessons: 15,
@@ -42,9 +56,9 @@ const Dashboard: React.FC = () => {
         },
         recentActivity: [],
         achievements: [],
-        studyCalendar: [],
-        recommendations: { nextLessons: [], reviewLessons: [] },
       });
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
     } finally {
       setLoading(false);
     }
@@ -54,7 +68,7 @@ const Dashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="flex items-center space-x-2">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <span className="text-neutral-600">Dashboard wird geladen...</span>
         </div>
       </div>
@@ -78,7 +92,7 @@ const Dashboard: React.FC = () => {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-trading border border-neutral-200">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600">Lektionen</p>
@@ -86,13 +100,13 @@ const Dashboard: React.FC = () => {
                   {overview?.completedLessons || 0}/{overview?.totalLessons || 0}
                 </p>
               </div>
-              <div className="bg-brand-100 p-3 rounded-lg">
-                <BookOpen className="h-6 w-6 text-brand-600" />
+              <div className="bg-blue-100 p-3 rounded-lg">
+                <BookOpen className="h-6 w-6 text-blue-600" />
               </div>
             </div>
             <div className="mt-4 bg-neutral-200 rounded-full h-2">
               <div 
-                className="bg-brand-600 h-2 rounded-full transition-all duration-500"
+                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${overview?.completionRate || 0}%` }}
               />
             </div>
@@ -101,7 +115,7 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-trading border border-neutral-200">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600">Lernzeit</p>
@@ -109,8 +123,8 @@ const Dashboard: React.FC = () => {
                   {Math.round((overview?.totalTimeSpent || 0) / 60)}h
                 </p>
               </div>
-              <div className="bg-profit-100 p-3 rounded-lg">
-                <Clock className="h-6 w-6 text-profit-600" />
+              <div className="bg-green-100 p-3 rounded-lg">
+                <Clock className="h-6 w-6 text-green-600" />
               </div>
             </div>
             <p className="text-sm text-neutral-600 mt-2">
@@ -118,7 +132,7 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-trading border border-neutral-200">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600">Aktuelle Serie</p>
@@ -135,7 +149,7 @@ const Dashboard: React.FC = () => {
             </p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-trading border border-neutral-200">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-neutral-600">Erfolge</p>
@@ -156,12 +170,12 @@ const Dashboard: React.FC = () => {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Next Lessons */}
-          <div className="bg-white rounded-xl p-6 shadow-trading border border-neutral-200">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-neutral-900">Nächste Lektionen</h2>
               <Link 
-                to="/lessons" 
-                className="text-brand-600 hover:text-brand-700 font-medium text-sm flex items-center"
+                to="/app/course" 
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
               >
                 Alle anzeigen <ChevronRight className="h-4 w-4 ml-1" />
               </Link>
@@ -170,7 +184,7 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               {/* Demo Lessons */}
               <div className="flex items-center p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
-                <div className="bg-brand-600 p-2 rounded-lg mr-4">
+                <div className="bg-blue-600 p-2 rounded-lg mr-4">
                   <Play className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex-1">
@@ -178,8 +192,8 @@ const Dashboard: React.FC = () => {
                   <p className="text-sm text-neutral-600">15 Minuten • Anfänger</p>
                 </div>
                 <Link
-                  to="/lessons/1"
-                  className="bg-brand-600 text-white px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors"
+                  to="/app/lesson/1"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Starten
                 </Link>
@@ -194,7 +208,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-sm text-neutral-600">20 Minuten • Anfänger</p>
                 </div>
                 <Link
-                  to="/lessons/2"
+                  to="/app/lesson/2"
                   className="bg-neutral-600 text-white px-4 py-2 rounded-lg hover:bg-neutral-700 transition-colors"
                 >
                   Starten
@@ -210,7 +224,7 @@ const Dashboard: React.FC = () => {
                   <p className="text-sm text-neutral-600">25 Minuten • Intermediate</p>
                 </div>
                 <Link
-                  to="/lessons/3"
+                  to="/app/lesson/3"
                   className="bg-neutral-600 text-white px-4 py-2 rounded-lg hover:bg-neutral-700 transition-colors"
                 >
                   Starten
@@ -220,57 +234,34 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white rounded-xl p-6 shadow-trading border border-neutral-200">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-neutral-900">Letzte Aktivität</h2>
               <Link 
-                to="/progress" 
-                className="text-brand-600 hover:text-brand-700 font-medium text-sm flex items-center"
+                to="/app/progress" 
+                className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center"
               >
                 Fortschritt <ChevronRight className="h-4 w-4 ml-1" />
               </Link>
             </div>
             
-            <div className="space-y-4">
-              {dashboardData?.recentActivity.length ? (
-                dashboardData.recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-center p-4 bg-neutral-50 rounded-lg">
-                    <div className="bg-profit-100 p-2 rounded-lg mr-4">
-                      <BookOpen className="h-5 w-5 text-profit-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-neutral-900">{activity.lessonTitle}</h3>
-                      <p className="text-sm text-neutral-600">
-                        {activity.timeSpent} Minuten • {new Date(activity.completedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {activity.quizPassed && (
-                      <div className="bg-profit-600 text-white px-3 py-1 rounded-full text-sm">
-                        {activity.quizScore}%
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <Calendar className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
-                  <p className="text-neutral-600">Noch keine Aktivität</p>
-                  <p className="text-sm text-neutral-500">Starten Sie Ihre erste Lektion!</p>
-                </div>
-              )}
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
+              <p className="text-neutral-600">Noch keine Aktivität</p>
+              <p className="text-sm text-neutral-500">Starten Sie Ihre erste Lektion!</p>
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-8 bg-white rounded-xl p-6 shadow-trading border border-neutral-200">
+        <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
           <h2 className="text-xl font-bold text-neutral-900 mb-6">Schnellzugriff</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link
-              to="/lessons"
-              className="flex items-center p-4 bg-brand-50 rounded-lg hover:bg-brand-100 transition-colors"
+              to="/app/course"
+              className="flex items-center p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
             >
-              <BookOpen className="h-8 w-8 text-brand-600 mr-4" />
+              <BookOpen className="h-8 w-8 text-blue-600 mr-4" />
               <div>
                 <h3 className="font-medium text-neutral-900">Alle Lektionen</h3>
                 <p className="text-sm text-neutral-600">Kursübersicht</p>
@@ -278,10 +269,10 @@ const Dashboard: React.FC = () => {
             </Link>
             
             <Link
-              to="/progress"
-              className="flex items-center p-4 bg-profit-50 rounded-lg hover:bg-profit-100 transition-colors"
+              to="/app/progress"
+              className="flex items-center p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
             >
-              <BarChart3 className="h-8 w-8 text-profit-600 mr-4" />
+              <BarChart3 className="h-8 w-8 text-green-600 mr-4" />
               <div>
                 <h3 className="font-medium text-neutral-900">Fortschritt</h3>
                 <p className="text-sm text-neutral-600">Statistiken</p>
@@ -289,7 +280,7 @@ const Dashboard: React.FC = () => {
             </Link>
             
             <Link
-              to="/achievements"
+              to="/app/achievements"
               className="flex items-center p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
             >
               <Award className="h-8 w-8 text-yellow-600 mr-4" />

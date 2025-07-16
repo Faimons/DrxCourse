@@ -589,5 +589,11 @@ CREATE TABLE schema_migrations (
     version VARCHAR(20) PRIMARY KEY,
     applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- Einfache Indexes hinzufügen (am Ende der Datei):
+CREATE INDEX idx_lesson_progress_user_access 
+ON lesson_progress(user_id, last_accessed_at);
+
+CREATE INDEX idx_analytics_events_recent 
+ON analytics_events(created_at, event_name);
 
 INSERT INTO schema_migrations (version) VALUES ('1.0.0');

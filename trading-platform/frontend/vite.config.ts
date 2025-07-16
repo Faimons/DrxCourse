@@ -1,3 +1,4 @@
+// vite.config.ts - TypeScript Support
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -8,6 +9,20 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  esbuild: {
+    loader: 'tsx',
+    include: /src\/.*\.[tj]sx?$/,
+    exclude: [],
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        '.js': 'jsx',
+        '.ts': 'tsx',
+        '.tsx': 'tsx'
+      },
     },
   },
   server: {
@@ -33,8 +48,5 @@ export default defineConfig({
         },
       },
     },
-  },
-  define: {
-    'process.env': process.env,
   },
 })
