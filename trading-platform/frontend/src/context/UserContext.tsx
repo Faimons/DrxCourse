@@ -8,20 +8,15 @@ interface User {
   email: string;
   role: 'admin' | 'student' | 'instructor';
   avatar?: string;
-  joinedAt: string;
-  lastActive: string;
+  status: 'active' | 'inactive' | 'suspended';
+  email_verified: boolean;
+  created_at: string;
+  updated_at: string;
+  last_login?: string;
   preferences: {
     theme: 'dark' | 'light';
     notifications: boolean;
     language: string;
-  };
-  progress: {
-    completedLessons: number;
-    totalLessons: number;
-    currentStreak: number;
-    totalPoints: number;
-    level: string;
-    certificates: string[];
   };
 }
 
@@ -50,7 +45,6 @@ interface UserContextType {
   updateUser: (userData: Partial<User>) => void;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
-  updateProgress: (progressData: Partial<User['progress']>) => void;
   updatePreferences: (preferences: Partial<User['preferences']>) => void;
 }
 
@@ -68,6 +62,9 @@ interface UserProviderProps {
   children: ReactNode;
 }
 
+// API Base URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,20 +78,12 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     try {
       const token = localStorage.getItem('accessToken');
       if (token) {
-        // In a real app, validate token with backend
-        // For now, use mock user data
-        const savedUser = localStorage.getItem('currentUser');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
-        } else {
-          // Create default user if token exists but no user data
-          const defaultUser = createMockUser('admin@tradingplatform.com', 'admin');
-          setUser(defaultUser);
-          localStorage.setItem('currentUser', JSON.stringify(defaultUser));
-        }
+        // Validate token with backend
+        await fetchCurrentUser();
       }
     } catch (error) {
       console.error('Failed to initialize user:', error);
+      // Clear invalid tokens
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('currentUser');
@@ -103,70 +92,107 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   };
 
-  const createMockUser = (email: string, role: 'admin' | 'student'): User => {
-    const isAdmin = role === 'admin';
-    return {
-      id: isAdmin ? 1 : 2,
-      name: isAdmin ? 'Admin User' : 'Student User',
-      email,
-      role,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-      joinedAt: '2024-01-01T00:00:00Z',
-      lastActive: new Date().toISOString(),
-      preferences: {
-        theme: 'dark',
-        notifications: true,
-        language: 'en'
-      },
-      progress: {
-        completedLessons: isAdmin ? 20 : 8,
-        totalLessons: 24,
-        currentStreak: isAdmin ? 15 : 7,
-        totalPoints: isAdmin ? 5000 : 2850,
-        level: isAdmin ? 'Expert' : 'Intermediate',
-        certificates: isAdmin ? ['basic-trading', 'technical-analysis', 'risk-management'] : ['basic-trading']
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user');
       }
-    };
+
+      const data = await response.json();
+      const userData = data.user;
+
+      // Transform backend user to frontend format
+      const transformedUser: User = {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        avatar: userData.avatar_url,
+        status: userData.status,
+        email_verified: userData.email_verified,
+        created_at: userData.created_at,
+        updated_at: userData.updated_at,
+        last_login: userData.last_login,
+        preferences: userData.preferences || {
+          theme: 'dark',
+          notifications: true,
+          language: 'en'
+        }
+      };
+
+      setUser(transformedUser);
+      localStorage.setItem('currentUser', JSON.stringify(transformedUser));
+      
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+      throw error;
+    }
   };
 
   const login = async (credentials: LoginCredentials) => {
     try {
       setLoading(true);
       
-      // Mock authentication - replace with real API call
-      const validCredentials = [
-        { email: 'admin@tradingplatform.com', password: 'admin123!', role: 'admin' as const },
-        { email: 'student@example.com', password: 'student123!', role: 'student' as const }
-      ];
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password,
+        }),
+      });
 
-      const validUser = validCredentials.find(
-        cred => cred.email === credentials.email && cred.password === credentials.password
-      );
-
-      if (!validUser) {
-        throw new Error('Invalid email or password');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
       }
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Create user object
-      const mockUser = createMockUser(validUser.email, validUser.role);
+      const data = await response.json();
       
-      // Set tokens
-      const accessToken = `mock-access-token-${Date.now()}`;
-      const refreshToken = `mock-refresh-token-${Date.now()}`;
-      
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('currentUser', JSON.stringify(mockUser));
+      // Store tokens
+      localStorage.setItem('accessToken', data.token);
+      if (data.refreshToken) {
+        localStorage.setItem('refreshToken', data.refreshToken);
+      }
       
       if (credentials.rememberMe) {
         localStorage.setItem('rememberMe', 'true');
       }
+
+      // Transform and store user
+      const transformedUser: User = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+        avatar: data.user.avatar_url,
+        status: data.user.status || 'active',
+        email_verified: data.user.email_verified || false,
+        created_at: data.user.created_at || new Date().toISOString(),
+        updated_at: data.user.updated_at || new Date().toISOString(),
+        last_login: new Date().toISOString(),
+        preferences: data.user.preferences || {
+          theme: 'dark',
+          notifications: true,
+          language: 'en'
+        }
+      };
+
+      setUser(transformedUser);
+      localStorage.setItem('currentUser', JSON.stringify(transformedUser));
       
-      setUser(mockUser);
-      console.log('✅ Login successful:', mockUser.email);
+      console.log('✅ Login successful:', transformedUser.email);
       
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -180,7 +206,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
-      // Validation
+      // Client-side validation
       if (data.password !== data.confirmPassword) {
         throw new Error('Passwords do not match');
       }
@@ -189,30 +215,55 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
         throw new Error('You must agree to the terms and privacy policy');
       }
 
-      // Check if user already exists (mock check)
-      const existingUser = localStorage.getItem(`user_${data.email}`);
-      if (existingUser) {
-        throw new Error('User already exists with this email');
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          email: data.email,
+          password: data.password,
+          newsletter: data.newsletter || false,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
       }
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const responseData = await response.json();
       
-      // Create new user
-      const newUser = createMockUser(data.email, 'student');
-      newUser.name = data.name;
+      // Store tokens
+      localStorage.setItem('accessToken', responseData.token);
+      if (responseData.refreshToken) {
+        localStorage.setItem('refreshToken', responseData.refreshToken);
+      }
+
+      // Transform and store user
+      const transformedUser: User = {
+        id: responseData.user.id,
+        name: responseData.user.name,
+        email: responseData.user.email,
+        role: responseData.user.role || 'student',
+        avatar: responseData.user.avatar_url,
+        status: responseData.user.status || 'active',
+        email_verified: responseData.user.email_verified || false,
+        created_at: responseData.user.created_at,
+        updated_at: responseData.user.updated_at,
+        last_login: new Date().toISOString(),
+        preferences: {
+          theme: 'dark',
+          notifications: true,
+          language: 'en'
+        }
+      };
+
+      setUser(transformedUser);
+      localStorage.setItem('currentUser', JSON.stringify(transformedUser));
       
-      // Set tokens
-      const accessToken = `mock-access-token-${Date.now()}`;
-      const refreshToken = `mock-refresh-token-${Date.now()}`;
-      
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
-      localStorage.setItem(`user_${data.email}`, JSON.stringify(newUser));
-      
-      setUser(newUser);
-      console.log('✅ Registration successful:', newUser.email);
+      console.log('✅ Registration successful:', transformedUser.email);
       
     } catch (error: any) {
       console.error('Registration failed:', error);
@@ -224,6 +275,19 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 
   const logout = () => {
     try {
+      // Optional: Call logout endpoint to invalidate server-side session
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        fetch(`${API_BASE_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }).catch(err => console.warn('Logout endpoint failed:', err));
+      }
+
+      // Clear local storage
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('currentUser');
@@ -235,50 +299,76 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   };
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData };
+  const updateUser = async (userData: Partial<User>) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+
+      const data = await response.json();
+      const updatedUser = { ...user, ...data.user };
       setUser(updatedUser);
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      throw error;
     }
   };
 
-  const updateProgress = (progressData: Partial<User['progress']>) => {
-    if (user) {
-      const updatedUser = {
-        ...user,
-        progress: { ...user.progress, ...progressData }
-      };
-      setUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-    }
-  };
+  const updatePreferences = async (preferences: Partial<User['preferences']>) => {
+    try {
+      if (!user) return;
 
-  const updatePreferences = (preferences: Partial<User['preferences']>) => {
-    if (user) {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch(`${API_BASE_URL}/api/users/preferences`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ preferences }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update preferences');
+      }
+
       const updatedUser = {
         ...user,
         preferences: { ...user.preferences, ...preferences }
       };
       setUser(updatedUser);
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      
+    } catch (error) {
+      console.error('Failed to update preferences:', error);
+      // Update locally even if API fails
+      if (user) {
+        const updatedUser = {
+          ...user,
+          preferences: { ...user.preferences, ...preferences }
+        };
+        setUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      }
     }
   };
 
   const refreshUser = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      if (token && user) {
-        // In a real app, fetch fresh user data from API
-        // For now, just update last active time
-        const updatedUser = {
-          ...user,
-          lastActive: new Date().toISOString()
-        };
-        setUser(updatedUser);
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        console.log('✅ User refreshed');
-      }
+      await fetchCurrentUser();
+      console.log('✅ User refreshed');
     } catch (error) {
       console.error('Failed to refresh user:', error);
       logout();
@@ -294,7 +384,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     updateUser,
     refreshUser,
     isAuthenticated: !!user,
-    updateProgress,
     updatePreferences,
   };
 

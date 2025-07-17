@@ -55,6 +55,29 @@ const Login = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // KORRIGIERT: Rollenbasierte Navigation nach Login
+  const navigateBasedOnRole = () => {
+    // Prüfe User-Rolle im localStorage
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      console.log('User role after login:', user.role); // Debug log
+      
+      // Leite basierend auf Rolle weiter
+      if (user.role === 'admin') {
+        console.log('Redirecting admin to /admin/dashboard');
+        navigate('/admin/dashboard');
+      } else {
+        console.log('Redirecting student to /app/dashboard');
+        navigate('/app/dashboard');
+      }
+    } else {
+      // Fallback wenn kein User gespeichert
+      console.log('No user found, redirecting to /app/dashboard');
+      navigate('/app/dashboard');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -63,7 +86,8 @@ const Login = () => {
     setIsLoading(true);
     try {
       await login(formData);
-      navigate('/app/dashboard');
+      // KORRIGIERT: Verwende rollenbasierte Navigation
+      navigateBasedOnRole();
     } catch (error: any) {
       setErrors({ submit: error.message || 'Login failed. Please try again.' });
     } finally {
@@ -85,7 +109,8 @@ const Login = () => {
     setIsLoading(true);
     try {
       await login({ ...demoCredentials[type], rememberMe: false });
-      navigate('/app/dashboard');
+      // KORRIGIERT: Verwende rollenbasierte Navigation statt hardcoded /app/dashboard
+      navigateBasedOnRole();
     } catch (error: any) {
       setErrors({ submit: error.message || 'Demo login failed.' });
     } finally {
@@ -257,7 +282,7 @@ const Login = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-gray-700">
             <h3 className="text-white font-medium mb-2">Admin Demo</h3>
-            <p className="text-gray-400 text-sm mb-3">Full platform access</p>
+            <p className="text-gray-400 text-sm mb-3">Full platform access → /admin/dashboard</p>
             <button
               onClick={() => handleDemoLogin('admin')}
               disabled={isLoading}
@@ -269,7 +294,7 @@ const Login = () => {
 
           <div className="bg-gray-800/30 backdrop-blur-sm rounded-lg p-4 border border-gray-700">
             <h3 className="text-white font-medium mb-2">Student Demo</h3>
-            <p className="text-gray-400 text-sm mb-3">Standard learning access</p>
+            <p className="text-gray-400 text-sm mb-3">Standard learning access → /app/dashboard</p>
             <button
               onClick={() => handleDemoLogin('student')}
               disabled={isLoading}

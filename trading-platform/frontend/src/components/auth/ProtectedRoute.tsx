@@ -36,12 +36,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check role-based access
   if (requiredRole && user.role !== requiredRole) {
-    // Redirect based on user role
+    // KORRIGIERT: Redirect based on user role with correct paths
     const roleRedirects = {
-      admin: '/app/admin',
+      admin: '/admin/dashboard',        // ← KORRIGIERT: /admin/dashboard statt /app/admin
       instructor: '/app/instructor', 
       student: '/app/dashboard'
     };
+    
+    console.log(`User has role: ${user.role}, redirecting to: ${roleRedirects[user.role] || '/app/dashboard'}`);
     
     return <Navigate to={roleRedirects[user.role] || '/app/dashboard'} replace />;
   }

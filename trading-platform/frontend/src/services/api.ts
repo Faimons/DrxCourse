@@ -1,12 +1,12 @@
+// trading-platform/frontend/src/services/apiClient.ts
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { ApiResponse, ApiError } from '../types';
 
-class ApiService {
+class ApiClient {
   private client: AxiosInstance;
   private baseURL: string;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -20,199 +20,163 @@ class ApiService {
   }
 
   private setupInterceptors() {
-    // Request interceptor - add auth token
+    // Request interceptor - Add auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = this.getAccessToken();
-        if (token && config.headers) {
+        const token = localStorage.getItem('accessToken');
+        if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        return Promise.reject(error);
+      }
     );
 
-    // Response interceptor - handle errors and token refresh
+    // Response interceptor - Handle errors
     this.client.interceptors.response.use(
-      (response: AxiosResponse<ApiResponse>) => response,
+      (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
+        // Handle 401 - Unauthorized
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
-
+          
           try {
-            const refreshToken = this.getRefreshToken();
-            if (refreshToken) {
-              const response = await this.client.post('/auth/refresh', {
-                refreshToken,
-              });
-
-              const { accessToken, refreshToken: newRefreshToken } = response.data.data.tokens;
-              
-              this.setTokens(accessToken, newRefreshToken);
-              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-              
-              return this.client(originalRequest);
-            }
+            await this.refreshToken();
+            return this.client(originalRequest);
           } catch (refreshError) {
-            this.clearTokens();
-            window.location.href = '/login';
+            this.handleAuthError();
             return Promise.reject(refreshError);
           }
         }
 
-        return Promise.reject(this.handleError(error));
+        return Promise.reject(this.formatError(error));
       }
     );
   }
 
-  private handleError(error: any): ApiError {
+  private async refreshToken(): Promise<void> {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const response = await axios.post(`${this.baseURL}/api/auth/refresh`, {
+        refreshToken,
+      });
+
+      const { accessToken, refreshToken: newRefreshToken } = response.data;
+      localStorage.setItem('accessToken', accessToken);
+      if (newRefreshToken) {
+        localStorage.setItem('refreshToken', newRefreshToken);
+      }
+    } catch (error) {
+      throw new Error('Token refresh failed');
+    }
+  }
+
+  private handleAuthError(): void {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('currentUser');
+    window.location.href = '/login';
+  }
+
+  private formatError(error: any) {
     if (error.response?.data) {
       return {
-        error: error.response.data.error || 'Ein Fehler ist aufgetreten',
-        code: error.response.data.code || 'UNKNOWN_ERROR',
+        message: error.response.data.message || error.response.data.error || 'API Error',
+        status: error.response.status,
+        code: error.response.data.code,
         details: error.response.data.details,
-        timestamp: new Date().toISOString(),
-        path: error.config?.url,
-        method: error.config?.method?.toUpperCase(),
       };
     }
 
     if (error.request) {
       return {
-        error: 'Keine Verbindung zum Server',
+        message: 'Network Error - Server not reachable',
+        status: 0,
         code: 'NETWORK_ERROR',
-        timestamp: new Date().toISOString(),
       };
     }
 
     return {
-      error: error.message || 'Ein unbekannter Fehler ist aufgetreten',
+      message: error.message || 'Unknown Error',
+      status: 0,
       code: 'UNKNOWN_ERROR',
-      timestamp: new Date().toISOString(),
     };
   }
 
-  // Token management
-  private getAccessToken(): string | null {
-    return localStorage.getItem('accessToken');
-  }
-
-  private getRefreshToken(): string | null {
-    return localStorage.getItem('refreshToken');
-  }
-
-  private setTokens(accessToken: string, refreshToken: string): void {
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  }
-
-  private clearTokens(): void {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-  }
-
-  // Generic HTTP methods
+  // HTTP Methods
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.get<ApiResponse<T>>(url, config);
-    return response.data.data;
+    const response = await this.client.get<T>(url, config);
+    return response.data;
   }
 
   async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.post<ApiResponse<T>>(url, data, config);
-    return response.data.data;
+    const response = await this.client.post<T>(url, data, config);
+    return response.data;
   }
 
   async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.put<ApiResponse<T>>(url, data, config);
-    return response.data.data;
+    const response = await this.client.put<T>(url, data, config);
+    return response.data;
   }
 
   async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.delete<ApiResponse<T>>(url, config);
-    return response.data.data;
+    const response = await this.client.delete<T>(url, config);
+    return response.data;
   }
 
   async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.patch<ApiResponse<T>>(url, data, config);
-    return response.data.data;
+    const response = await this.client.patch<T>(url, data, config);
+    return response.data;
   }
 
   // File upload
-  async uploadFile<T = any>(url: string, file: File, onProgress?: (progress: number) => void): Promise<T> {
+  async uploadFile<T = any>(
+    url: string, 
+    file: File, 
+    onProgress?: (progress: number) => void
+  ): Promise<T> {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await this.client.post<ApiResponse<T>>(url, formData, {
+    const config: AxiosRequestConfig = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
       onUploadProgress: (progressEvent) => {
         if (onProgress && progressEvent.total) {
-          const progress = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           onProgress(progress);
         }
       },
-    });
+    };
 
-    return response.data.data;
-  }
-
-  // Health check
-  async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    const response = await this.client.get('/health');
+    const response = await this.client.post<T>(url, formData, config);
     return response.data;
   }
 
-  // Auth methods
-  setAuthTokens(accessToken: string, refreshToken: string): void {
-    this.setTokens(accessToken, refreshToken);
-  }
-
-  clearAuthTokens(): void {
-    this.clearTokens();
-  }
-
-  isAuthenticated(): boolean {
-    return !!this.getAccessToken();
-  }
-
-  // Request with custom error handling
-  async request<T = any>(
-    url: string,
-    config?: AxiosRequestConfig & { skipErrorHandling?: boolean }
-  ): Promise<T> {
+  // Health check
+  async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.client.request<ApiResponse<T>>({
-        url,
-        ...config,
-      });
-      return response.data.data;
+      await this.get('/health');
+      return true;
     } catch (error) {
-      if (config?.skipErrorHandling) {
-        throw error;
-      }
-      throw this.handleError(error);
+      return false;
     }
   }
 
-  // Batch requests
-  async batchRequest<T = any>(requests: Array<() => Promise<T>>): Promise<T[]> {
-    return Promise.all(requests.map(request => request()));
-  }
-
-  // Cancel token support
-  getCancelToken() {
-    return axios.CancelToken.source();
-  }
-
-  // Base URL getter
+  // Get base URL
   getBaseURL(): string {
     return this.baseURL;
   }
 }
 
-// Export singleton instance
-export const apiService = new ApiService();
-export default apiService;
+export const apiClient = new ApiClient();
+export default apiClient;

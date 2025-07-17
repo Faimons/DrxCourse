@@ -31,6 +31,7 @@ import LessonOverview from './components/lessons/LessonOverview'
 import AdminDashboard from './components/admin/AdminDashboard'
 import ContentMigration from './components/admin/LessonMigrationSystem'
 import LessonManagement from './components/admin/LessonManagement'
+import LessonMigrationSystem from './components/admin/LessonMigrationSystem'
 
 function App() {
   return (
@@ -74,7 +75,7 @@ function App() {
           }>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="migration" element={<ContentMigration />} />
+            <Route path="migration" element={<LessonMigrationSystem />} />
             <Route path="lessons" element={<LessonManagement />} />
           </Route>
 
