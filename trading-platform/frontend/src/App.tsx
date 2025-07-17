@@ -29,7 +29,7 @@ import LessonOverview from './components/lessons/LessonOverview'
 
 // NEW: Admin Components
 import AdminDashboard from './components/admin/AdminDashboard'
-import ContentMigration from './components/admin/ContentMigration'
+import ContentMigration from './components/admin/LessonMigrationSystem'
 import LessonManagement from './components/admin/LessonManagement'
 
 function App() {

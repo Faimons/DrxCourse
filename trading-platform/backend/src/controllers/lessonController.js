@@ -241,26 +241,3 @@ export const lessonController = {
   }
 };
 
-// trading-platform/backend/src/routes/lessons.js
-import express from 'express';
-import { lessonController } from '../controllers/lessonController.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { adminOnly } from '../middleware/adminAuth.js';
-
-const router = express.Router();
-
-// Public Routes
-router.get('/', lessonController.getAllLessons);
-router.get('/:id', lessonController.getLessonById);
-
-// Protected Routes
-router.use(authenticateToken); // Alle nachfolgenden Routes brauchen Auth
-
-router.post('/:id/progress', lessonController.updateProgress);
-router.get('/:id/progress/:userId', lessonController.getLessonProgress);
-
-// Admin Only Routes
-router.post('/import', adminOnly, lessonController.importLesson);
-router.delete('/:id', adminOnly, lessonController.deleteLesson);
-
-export default router;
